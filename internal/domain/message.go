@@ -15,10 +15,12 @@ const (
 )
 
 type Message struct {
-	ID               uuid.UUID
-	GlobalSeq        int64
-	SourcePlatform   Platform
-	SourceExternalID string
+	ID                      uuid.UUID
+	GlobalSeq               int64
+	RoomID                  uuid.UUID
+	SourceEndpointID        uuid.UUID
+	SourcePlatform          Platform
+	SourceExternalMessageID string
 
 	Sender string
 	Text   string

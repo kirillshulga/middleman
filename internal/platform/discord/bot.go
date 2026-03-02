@@ -2,6 +2,7 @@ package discord
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/bwmarrin/discordgo"
@@ -47,11 +48,16 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	_, err := b.msgService.CreateMessageWithDeliveries(
 		ctx,
 		domain.PlatformDiscord,
+		m.ChannelID,
 		m.ID,
 		m.Author.Username,
 		m.Content,
 		m.Timestamp,
 	)
+
+	if err != nil && errors.Is(err, service.ErrSourceEndpointNotFound) {
+		return
+	}
 
 	if err != nil && err != service.ErrDuplicateMessage {
 		log.Println("discord error:", err)
@@ -66,14 +72,10 @@ func (b *Bot) Stop() error {
 	return b.session.Close()
 }
 
-func (b *Bot) Send(ctx context.Context, msg *domain.Message) error {
-	//if msg.ChatID == "" {
-	//	return fmt.Errorf("channel id is empty")
-	//}
-	ChannelID := "1475705150713630906"
+func (b *Bot) Send(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
 	text := "### " + msg.Sender + " in " + string(msg.SourcePlatform) + ":\n" + ">>> " + msg.Text
 	_, err := b.session.ChannelMessageSend(
-		ChannelID,
+		endpoint.ExternalChatID,
 		text,
 	)
 

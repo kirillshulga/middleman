@@ -29,19 +29,21 @@ func (r *MessageRepository) Create(
 	err := pgTx.tx.QueryRow(ctx, `
 		INSERT INTO messages (
 			id,
-			source_platform,
-			source_external_id,
+			room_id,
+			source_endpoint_id,
+			source_external_message_id,
 			sender,
 			text,
 			created_at,
 			received_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING global_seq
 	`,
 		msg.ID,
-		msg.SourcePlatform,
-		msg.SourceExternalID,
+		msg.RoomID,
+		msg.SourceEndpointID,
+		msg.SourceExternalMessageID,
 		msg.Sender,
 		msg.Text,
 		msg.CreatedAt,
@@ -51,23 +53,21 @@ func (r *MessageRepository) Create(
 	return err
 }
 
-func (r *MessageRepository) ExistsByExternalID(ctx context.Context, platform domain.Platform, externalID string) (bool, error) {
-	var exists bool
-	err := r.pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM messages
-			WHERE source_platform = $1 AND source_external_id = $2
-		)
-	`, platform, externalID).Scan(&exists)
-
-	return exists, err
-}
-
 func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, global_seq, source_platform, source_external_id, sender, text, created_at
-		FROM messages
-		WHERE id = $1
+		SELECT m.id,
+		       m.global_seq,
+		       m.room_id,
+		       m.source_endpoint_id,
+		       e.platform,
+		       m.source_external_message_id,
+		       m.sender,
+		       m.text,
+		       m.created_at,
+		       m.received_at
+		FROM messages m
+		JOIN endpoints e ON e.id = m.source_endpoint_id
+		WHERE m.id = $1
 	`, id)
 
 	var msg domain.Message
@@ -75,11 +75,14 @@ func (r *MessageRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 	err := row.Scan(
 		&msg.ID,
 		&msg.GlobalSeq,
+		&msg.RoomID,
+		&msg.SourceEndpointID,
 		&msg.SourcePlatform,
-		&msg.SourceExternalID,
+		&msg.SourceExternalMessageID,
 		&msg.Sender,
 		&msg.Text,
 		&msg.CreatedAt,
+		&msg.ReceivedAt,
 	)
 
 	if err != nil {

@@ -9,18 +9,20 @@ import (
 type DeliveryStatus string
 
 const (
-	DeliveryPending DeliveryStatus = "pending"
-	DeliverySent    DeliveryStatus = "sent"
-	DeliveryFailed  DeliveryStatus = "failed"
+	DeliveryPending    DeliveryStatus = "pending"
+	DeliveryProcessing DeliveryStatus = "processing"
+	DeliverySent       DeliveryStatus = "sent"
+	DeliveryFailed     DeliveryStatus = "failed"
 )
 
 type Delivery struct {
-	ID        uuid.UUID
-	MessageID uuid.UUID
-	Platform  Platform
-	Status    DeliveryStatus
-	Attempts  int
-	LastError *string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID               uuid.UUID
+	MessageID        uuid.UUID
+	TargetEndpointID uuid.UUID
+	Status           DeliveryStatus
+	Attempts         int
+	NextRetryAt      time.Time
+	LastError        *string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }

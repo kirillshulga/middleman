@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"log"
@@ -34,7 +35,6 @@ func NewBot(token string, msgService *service.MessageService) (*Bot, error) {
 
 func (b *Bot) WebhookHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		update, err := b.api.HandleUpdate(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -52,15 +52,22 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		}
 
 		externalID := strconv.Itoa(update.Message.MessageID)
+		chatID := strconv.FormatInt(update.Message.Chat.ID, 10)
 		createdAt := time.Unix(int64(update.Message.Date), 0)
 		_, err = b.msgService.CreateMessageWithDeliveries(
 			r.Context(),
 			domain.PlatformTelegram,
+			chatID,
 			externalID,
 			sender,
 			update.Message.Text,
 			createdAt,
 		)
+
+		if err != nil && errors.Is(err, service.ErrSourceEndpointNotFound) {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		if err != nil && err != service.ErrDuplicateMessage {
 			log.Println("telegram error:", err)
@@ -72,18 +79,18 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 	}
 }
 
-func (b *Bot) Send(ctx context.Context, msg *domain.Message) error {
-	//if msg.ChatID == "" {
-	//	return fmt.Errorf("chat id is empty")
-	//}
-	chatID := int64(-5163496194) // TODO: Прокинуть ChatID
+func (b *Bot) Send(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
+	chatID, err := strconv.ParseInt(endpoint.ExternalChatID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid chat id: %w", err)
+	}
 
 	escapedText := escapeHTML(msg.Text)
 	title := fmt.Sprintf("<b>%s in %s:</b> \n", msg.Sender, string(msg.SourcePlatform))
 	text := title + escapedText
 	message := tgbotapi.NewMessage(chatID, text)
 	message.ParseMode = tgbotapi.ModeHTML
-	_, err := b.api.Send(message)
+	_, err = b.api.Send(message)
 	return err
 }
 

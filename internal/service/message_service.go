@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/google/uuid"
 
 	"middleman/internal/domain"
@@ -12,12 +14,13 @@ import (
 )
 
 var ErrDuplicateMessage = errors.New("message already exists")
+var ErrSourceEndpointNotFound = errors.New("source endpoint not found")
 
 type MessageService struct {
-	msgRepo         repository.MessageRepository
-	delRepo         repository.DeliveryRepository
-	txMgr           TxManager
-	targetPlatforms []domain.Platform
+	msgRepo      repository.MessageRepository
+	delRepo      repository.DeliveryRepository
+	endpointRepo repository.EndpointRepository
+	txMgr        TxManager
 }
 
 type TxManager interface {
@@ -27,25 +30,33 @@ type TxManager interface {
 func NewMessageService(
 	msgRepo repository.MessageRepository,
 	delRepo repository.DeliveryRepository,
+	endpointRepo repository.EndpointRepository,
 	txMgr TxManager,
-	targetPlatforms []domain.Platform,
 ) *MessageService {
 	return &MessageService{
-		msgRepo:         msgRepo,
-		delRepo:         delRepo,
-		txMgr:           txMgr,
-		targetPlatforms: targetPlatforms,
+		msgRepo:      msgRepo,
+		delRepo:      delRepo,
+		endpointRepo: endpointRepo,
+		txMgr:        txMgr,
 	}
 }
 
 func (s *MessageService) CreateMessageWithDeliveries(
 	ctx context.Context,
 	sourcePlatform domain.Platform,
-	externalID string,
+	sourceChatID string,
+	sourceExternalMessageID string,
 	sender string,
 	text string,
 	createdAt time.Time,
 ) (*domain.Message, error) {
+	sourceEndpoint, err := s.endpointRepo.GetByPlatformChatID(ctx, sourcePlatform, sourceChatID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSourceEndpointNotFound
+		}
+		return nil, err
+	}
 
 	tx, err := s.txMgr.Begin(ctx)
 	if err != nil {
@@ -56,13 +67,14 @@ func (s *MessageService) CreateMessageWithDeliveries(
 	now := time.Now()
 
 	msg := &domain.Message{
-		ID:               uuid.New(),
-		SourcePlatform:   sourcePlatform,
-		SourceExternalID: externalID,
-		Sender:           sender,
-		Text:             text,
-		CreatedAt:        createdAt,
-		ReceivedAt:       now,
+		ID:                      uuid.New(),
+		RoomID:                  sourceEndpoint.RoomID,
+		SourceEndpointID:        sourceEndpoint.ID,
+		SourceExternalMessageID: sourceExternalMessageID,
+		Sender:                  sender,
+		Text:                    text,
+		CreatedAt:               createdAt,
+		ReceivedAt:              now,
 	}
 
 	// INSERT (global_seq получаем через RETURNING)
@@ -78,21 +90,27 @@ func (s *MessageService) CreateMessageWithDeliveries(
 	}
 
 	// Создаём delivery задачи
-	deliveries := make([]domain.Delivery, 0, len(s.targetPlatforms))
+	targetEndpoints, err := s.endpointRepo.ListActiveByRoom(ctx, sourceEndpoint.RoomID)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, platform := range s.targetPlatforms {
-		if platform == sourcePlatform {
+	deliveries := make([]domain.Delivery, 0, len(targetEndpoints))
+
+	for _, endpoint := range targetEndpoints {
+		if endpoint.ID == sourceEndpoint.ID {
 			continue
 		}
 
 		deliveries = append(deliveries, domain.Delivery{
-			ID:        uuid.New(),
-			MessageID: msg.ID,
-			Platform:  platform,
-			Status:    domain.DeliveryPending,
-			Attempts:  0,
-			CreatedAt: now,
-			UpdatedAt: now,
+			ID:               uuid.New(),
+			MessageID:        msg.ID,
+			TargetEndpointID: endpoint.ID,
+			Status:           domain.DeliveryPending,
+			Attempts:         0,
+			NextRetryAt:      now,
+			CreatedAt:        now,
+			UpdatedAt:        now,
 		})
 	}
 

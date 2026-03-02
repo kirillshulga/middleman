@@ -36,20 +36,15 @@ func main() {
 	// ===== Repositories =====
 	msgRepo := postgres.NewMessageRepository(database.Pool)
 	delRepo := postgres.NewDeliveryRepository(database.Pool)
+	endpointRepo := postgres.NewEndpointRepository(database.Pool)
 	txMgr := postgres.NewTxManager(database.Pool)
-
-	targetPlatforms := []domain.Platform{
-		domain.PlatformTelegram,
-		domain.PlatformDiscord,
-		domain.PlatformSlack,
-	}
 
 	// ===== Message Service =====
 	msgService := service.NewMessageService(
 		msgRepo,
 		delRepo,
+		endpointRepo,
 		txMgr,
-		targetPlatforms,
 	)
 
 	// ===== Telegram Bot =====
@@ -84,6 +79,7 @@ func main() {
 	delService := service.NewDeliveryService(
 		delRepo,
 		msgRepo,
+		endpointRepo,
 		clients,
 	)
 
