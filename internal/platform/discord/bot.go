@@ -42,8 +42,6 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	log.Println("m.ChannelID:", m.ChannelID)
-
 	ctx := context.Background()
 
 	_, err := b.msgService.CreateMessageWithDeliveries(
@@ -73,9 +71,10 @@ func (b *Bot) Send(ctx context.Context, msg *domain.Message) error {
 	//	return fmt.Errorf("channel id is empty")
 	//}
 	ChannelID := "1475705150713630906"
+	text := "### " + msg.Sender + " in " + string(msg.SourcePlatform) + ":\n" + ">>> " + msg.Text
 	_, err := b.session.ChannelMessageSend(
 		ChannelID,
-		msg.Text,
+		text,
 	)
 
 	return err

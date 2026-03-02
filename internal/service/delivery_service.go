@@ -37,6 +37,8 @@ func (s *DeliveryService) ProcessPending(ctx context.Context, limit int) error {
 	for _, d := range deliveries {
 
 		if d.Attempts >= 5 {
+			// TODO: Разобраться что делать с попытками
+			err = s.delRepo.UpdateStatus(ctx, d.ID, domain.DeliveryFailed, d.LastError)
 			continue
 		}
 

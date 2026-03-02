@@ -2,6 +2,8 @@ package telegram
 
 import (
 	"context"
+	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"strconv"
@@ -48,7 +50,6 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		if sender == "" {
 			sender = update.Message.From.FirstName
 		}
-		log.Println("update.Message.Chat.ID: ", update.Message.Chat.ID)
 
 		externalID := strconv.Itoa(update.Message.MessageID)
 		createdAt := time.Unix(int64(update.Message.Date), 0)
@@ -75,11 +76,17 @@ func (b *Bot) Send(ctx context.Context, msg *domain.Message) error {
 	//if msg.ChatID == "" {
 	//	return fmt.Errorf("chat id is empty")
 	//}
-
 	chatID := int64(-5163496194) // TODO: Прокинуть ChatID
 
-	text := msg.Text
+	escapedText := escapeHTML(msg.Text)
+	title := fmt.Sprintf("<b>%s in %s:</b> \n", msg.Sender, string(msg.SourcePlatform))
+	text := title + escapedText
 	message := tgbotapi.NewMessage(chatID, text)
+	message.ParseMode = tgbotapi.ModeHTML
 	_, err := b.api.Send(message)
 	return err
+}
+
+func escapeHTML(text string) string {
+	return fmt.Sprintf("<blockquote>%s</blockquote>", html.EscapeString(text))
 }

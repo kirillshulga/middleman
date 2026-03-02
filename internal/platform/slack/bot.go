@@ -41,6 +41,7 @@ func NewBot(token string, msgService *service.MessageService) *Bot {
 	}
 }
 
+// TODO: Slack webhook не проверяет подпись запроса (X-Slack-Signature), endpoint можно подделать.
 func (b *Bot) WebhookHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var event slackEvent
@@ -67,8 +68,6 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
-		log.Printf("slack message: %+v", event)
 
 		createdAt := time.Unix(event.EventTime, 0)
 
@@ -100,11 +99,12 @@ func (b *Bot) Send(ctx context.Context, msg *domain.Message) error {
 		return fmt.Errorf("message content is empty")
 	}
 
-	// ChatID в Slack = channel ID (например C1234567890)
+	text := "*" + msg.Sender + "* *in* *" + string(msg.SourcePlatform) + ":* \n" + ">" + msg.Text
+
 	_, _, err := b.api.PostMessageContext(
 		ctx,
 		chatID,
-		slack.MsgOptionText(msg.Text, false),
+		slack.MsgOptionText(text, false),
 	)
 
 	return err
