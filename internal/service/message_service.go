@@ -70,6 +70,7 @@ func (s *MessageService) CreateMessageWithDeliveries(
 		ID:                      uuid.New(),
 		RoomID:                  sourceEndpoint.RoomID,
 		SourceEndpointID:        sourceEndpoint.ID,
+		SourcePlatform:          sourceEndpoint.Platform,
 		SourceExternalMessageID: sourceExternalMessageID,
 		Sender:                  sender,
 		Text:                    text,

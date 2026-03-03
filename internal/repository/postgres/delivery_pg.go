@@ -144,3 +144,24 @@ func (r *DeliveryRepository) MarkFailed(ctx context.Context, id uuid.UUID, lastE
 
 	return err
 }
+
+func (r *DeliveryRepository) GetQueueStats(ctx context.Context, retrySince time.Time) (repository.DeliveryQueueStats, error) {
+	var stats repository.DeliveryQueueStats
+
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'failed') AS failed_count,
+			COUNT(*) FILTER (WHERE status = 'pending' AND next_retry_at <= NOW()) AS backlog_pending_count,
+			COUNT(*) FILTER (WHERE attempts > 0 AND updated_at >= $1) AS retry_spike_count
+		FROM deliveries
+	`, retrySince).Scan(
+		&stats.FailedCount,
+		&stats.BacklogPendingCount,
+		&stats.RetrySpikeCount,
+	)
+	if err != nil {
+		return repository.DeliveryQueueStats{}, err
+	}
+
+	return stats, nil
+}
