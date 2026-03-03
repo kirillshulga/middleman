@@ -25,7 +25,7 @@ func (m *msgRepoMock) Create(ctx context.Context, tx repository.Tx, msg *domain.
 	return nil
 }
 
-func (m *msgRepoMock) GetByID(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
+func (m *msgRepoMock) GetByID(_ context.Context, _ uuid.UUID) (*domain.Message, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -40,23 +40,23 @@ func (m *delRepoMock) CreateBatch(ctx context.Context, tx repository.Tx, deliver
 	return nil
 }
 
-func (m *delRepoMock) ClaimPending(ctx context.Context, limit int) ([]domain.Delivery, error) {
+func (m *delRepoMock) ClaimPending(_ context.Context, _ int) ([]domain.Delivery, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *delRepoMock) MarkSent(ctx context.Context, id uuid.UUID) error {
+func (m *delRepoMock) MarkSent(_ context.Context, _ uuid.UUID) error {
 	return errors.New("not implemented")
 }
 
-func (m *delRepoMock) MarkRetry(ctx context.Context, id uuid.UUID, lastErr string, nextRetryAt time.Time) error {
+func (m *delRepoMock) MarkRetry(_ context.Context, _ uuid.UUID, _ string, _ time.Time) error {
 	return errors.New("not implemented")
 }
 
-func (m *delRepoMock) MarkFailed(ctx context.Context, id uuid.UUID, lastErr string) error {
+func (m *delRepoMock) MarkFailed(_ context.Context, _ uuid.UUID, _ string) error {
 	return errors.New("not implemented")
 }
 
-func (m *delRepoMock) GetQueueStats(ctx context.Context, retrySince time.Time) (repository.DeliveryQueueStats, error) {
+func (m *delRepoMock) GetQueueStats(_ context.Context, _ time.Time) (repository.DeliveryQueueStats, error) {
 	return repository.DeliveryQueueStats{}, errors.New("not implemented")
 }
 
@@ -65,7 +65,7 @@ type endpointRepoMock struct {
 	listActiveByRoomFn    func(ctx context.Context, roomID uuid.UUID) ([]domain.Endpoint, error)
 }
 
-func (m *endpointRepoMock) GetByID(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error) {
+func (m *endpointRepoMock) GetByID(_ context.Context, _ uuid.UUID) (*domain.Endpoint, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -89,12 +89,12 @@ type txMock struct {
 	commitErr error
 }
 
-func (m *txMock) Commit(ctx context.Context) error {
+func (m *txMock) Commit(_ context.Context) error {
 	m.committed = true
 	return m.commitErr
 }
 
-func (m *txMock) Rollback(ctx context.Context) error {
+func (m *txMock) Rollback(_ context.Context) error {
 	m.rolled = true
 	return nil
 }
@@ -104,7 +104,7 @@ type txMgrMock struct {
 	err error
 }
 
-func (m *txMgrMock) Begin(ctx context.Context) (repository.Tx, error) {
+func (m *txMgrMock) Begin(_ context.Context) (repository.Tx, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -131,22 +131,22 @@ func TestMessageService_CreateMessageWithDeliveries_Success(t *testing.T) {
 
 	var gotDeliveries []domain.Delivery
 	msgRepo := &msgRepoMock{
-		createFn: func(ctx context.Context, tx repository.Tx, msg *domain.Message) error {
+		createFn: func(_ context.Context, _ repository.Tx, msg *domain.Message) error {
 			msg.GlobalSeq = 42
 			return nil
 		},
 	}
 	delRepo := &delRepoMock{
-		createBatchFn: func(ctx context.Context, tx repository.Tx, deliveries []domain.Delivery) error {
+		createBatchFn: func(_ context.Context, _ repository.Tx, deliveries []domain.Delivery) error {
 			gotDeliveries = deliveries
 			return nil
 		},
 	}
 	endpointRepo := &endpointRepoMock{
-		getByPlatformChatIDFn: func(ctx context.Context, platform domain.Platform, externalChatID string) (*domain.Endpoint, error) {
+		getByPlatformChatIDFn: func(_ context.Context, _ domain.Platform, _ string) (*domain.Endpoint, error) {
 			return sourceEndpoint, nil
 		},
-		listActiveByRoomFn: func(ctx context.Context, roomID uuid.UUID) ([]domain.Endpoint, error) {
+		listActiveByRoomFn: func(_ context.Context, roomID uuid.UUID) ([]domain.Endpoint, error) {
 			return []domain.Endpoint{
 				*sourceEndpoint,
 				{
@@ -204,7 +204,7 @@ func TestMessageService_CreateMessageWithDeliveries_SourceEndpointNotFound(t *te
 		&msgRepoMock{},
 		&delRepoMock{},
 		&endpointRepoMock{
-			getByPlatformChatIDFn: func(ctx context.Context, platform domain.Platform, externalChatID string) (*domain.Endpoint, error) {
+			getByPlatformChatIDFn: func(_ context.Context, _ domain.Platform, _ string) (*domain.Endpoint, error) {
 				return nil, pgx.ErrNoRows
 			},
 		},
@@ -238,13 +238,13 @@ func TestMessageService_CreateMessageWithDeliveries_DuplicateMessage(t *testing.
 
 	svc := NewMessageService(
 		&msgRepoMock{
-			createFn: func(ctx context.Context, tx repository.Tx, msg *domain.Message) error {
+			createFn: func(_ context.Context, _ repository.Tx, _ *domain.Message) error {
 				return &pgconn.PgError{Code: "23505"}
 			},
 		},
 		&delRepoMock{},
 		&endpointRepoMock{
-			getByPlatformChatIDFn: func(ctx context.Context, platform domain.Platform, externalChatID string) (*domain.Endpoint, error) {
+			getByPlatformChatIDFn: func(_ context.Context, _ domain.Platform, _ string) (*domain.Endpoint, error) {
 				return sourceEndpoint, nil
 			},
 		},
@@ -281,20 +281,20 @@ func TestMessageService_CreateMessageWithDeliveries_CreateBatchError(t *testing.
 
 	svc := NewMessageService(
 		&msgRepoMock{
-			createFn: func(ctx context.Context, tx repository.Tx, msg *domain.Message) error {
+			createFn: func(_ context.Context, _ repository.Tx, _ *domain.Message) error {
 				return nil
 			},
 		},
 		&delRepoMock{
-			createBatchFn: func(ctx context.Context, tx repository.Tx, deliveries []domain.Delivery) error {
+			createBatchFn: func(_ context.Context, _ repository.Tx, _ []domain.Delivery) error {
 				return wantErr
 			},
 		},
 		&endpointRepoMock{
-			getByPlatformChatIDFn: func(ctx context.Context, platform domain.Platform, externalChatID string) (*domain.Endpoint, error) {
+			getByPlatformChatIDFn: func(_ context.Context, _ domain.Platform, _ string) (*domain.Endpoint, error) {
 				return sourceEndpoint, nil
 			},
-			listActiveByRoomFn: func(ctx context.Context, roomID uuid.UUID) ([]domain.Endpoint, error) {
+			listActiveByRoomFn: func(_ context.Context, roomID uuid.UUID) ([]domain.Endpoint, error) {
 				return []domain.Endpoint{
 					*sourceEndpoint,
 					{

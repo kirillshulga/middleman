@@ -34,7 +34,7 @@ func NewBot(token string, msgService *service.MessageService) (*Bot, error) {
 	return bot, nil
 }
 
-func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (b *Bot) messageCreate(_ *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if m.Author.Bot {
 		return
@@ -74,7 +74,7 @@ func (b *Bot) Stop() error {
 	return b.session.Close()
 }
 
-func (b *Bot) Send(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
+func (b *Bot) Send(_ context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
 	text := "### " + msg.Sender + " in " + string(msg.SourcePlatform) + ":\n" + ">>> " + msg.Text
 	_, err := b.session.ChannelMessageSend(
 		endpoint.ExternalChatID,

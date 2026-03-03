@@ -62,7 +62,9 @@ func (s *MessageService) CreateMessageWithDeliveries(
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	now := time.Now()
 

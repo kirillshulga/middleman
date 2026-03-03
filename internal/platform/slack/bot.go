@@ -72,7 +72,9 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		// Slack URL verification
 		if event.Type == "url_verification" {
 			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(event.Challenge))
+			if _, err := w.Write([]byte(event.Challenge)); err != nil {
+				log.Printf("slack challenge write error: %v\n", err)
+			}
 			return
 		}
 

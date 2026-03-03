@@ -15,27 +15,27 @@ type monitorRepoMock struct {
 	stats repository.DeliveryQueueStats
 }
 
-func (m *monitorRepoMock) CreateBatch(ctx context.Context, tx repository.Tx, deliveries []domain.Delivery) error {
+func (m *monitorRepoMock) CreateBatch(_ context.Context, _ repository.Tx, _ []domain.Delivery) error {
 	return nil
 }
 
-func (m *monitorRepoMock) ClaimPending(ctx context.Context, limit int) ([]domain.Delivery, error) {
+func (m *monitorRepoMock) ClaimPending(_ context.Context, _ int) ([]domain.Delivery, error) {
 	return nil, nil
 }
 
-func (m *monitorRepoMock) MarkSent(ctx context.Context, id uuid.UUID) error {
+func (m *monitorRepoMock) MarkSent(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
 
-func (m *monitorRepoMock) MarkRetry(ctx context.Context, id uuid.UUID, lastErr string, nextRetryAt time.Time) error {
+func (m *monitorRepoMock) MarkRetry(_ context.Context, _ uuid.UUID, _ string, _ time.Time) error {
 	return nil
 }
 
-func (m *monitorRepoMock) MarkFailed(ctx context.Context, id uuid.UUID, lastErr string) error {
+func (m *monitorRepoMock) MarkFailed(_ context.Context, _ uuid.UUID, _ string) error {
 	return nil
 }
 
-func (m *monitorRepoMock) GetQueueStats(ctx context.Context, retrySince time.Time) (repository.DeliveryQueueStats, error) {
+func (m *monitorRepoMock) GetQueueStats(_ context.Context, _ time.Time) (repository.DeliveryQueueStats, error) {
 	return m.stats, nil
 }
 

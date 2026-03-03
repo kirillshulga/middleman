@@ -107,7 +107,7 @@ func (b *Bot) SetWebhook(webhookURL string, dropPendingUpdates bool) error {
 	return err
 }
 
-func (b *Bot) Send(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
+func (b *Bot) Send(_ context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
 	chatID, err := strconv.ParseInt(endpoint.ExternalChatID, 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid chat id: %w", err)

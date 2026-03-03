@@ -20,7 +20,7 @@ type deliveryRepoMock struct {
 	markFailedFn   func(ctx context.Context, id uuid.UUID, lastErr string) error
 }
 
-func (m *deliveryRepoMock) CreateBatch(ctx context.Context, tx repository.Tx, deliveries []domain.Delivery) error {
+func (m *deliveryRepoMock) CreateBatch(_ context.Context, _ repository.Tx, _ []domain.Delivery) error {
 	return errors.New("not implemented")
 }
 
@@ -52,7 +52,7 @@ func (m *deliveryRepoMock) MarkFailed(ctx context.Context, id uuid.UUID, lastErr
 	return nil
 }
 
-func (m *deliveryRepoMock) GetQueueStats(ctx context.Context, retrySince time.Time) (repository.DeliveryQueueStats, error) {
+func (m *deliveryRepoMock) GetQueueStats(_ context.Context, _ time.Time) (repository.DeliveryQueueStats, error) {
 	return repository.DeliveryQueueStats{}, nil
 }
 
@@ -60,7 +60,7 @@ type deliveryMsgRepoMock struct {
 	getByIDFn func(ctx context.Context, id uuid.UUID) (*domain.Message, error)
 }
 
-func (m *deliveryMsgRepoMock) Create(ctx context.Context, tx repository.Tx, msg *domain.Message) error {
+func (m *deliveryMsgRepoMock) Create(_ context.Context, _ repository.Tx, _ *domain.Message) error {
 	return errors.New("not implemented")
 }
 
@@ -82,11 +82,11 @@ func (m *deliveryEndpointRepoMock) GetByID(ctx context.Context, id uuid.UUID) (*
 	return nil, pgx.ErrNoRows
 }
 
-func (m *deliveryEndpointRepoMock) GetByPlatformChatID(ctx context.Context, platform domain.Platform, externalChatID string) (*domain.Endpoint, error) {
+func (m *deliveryEndpointRepoMock) GetByPlatformChatID(_ context.Context, _ domain.Platform, _ string) (*domain.Endpoint, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *deliveryEndpointRepoMock) ListActiveByRoom(ctx context.Context, roomID uuid.UUID) ([]domain.Endpoint, error) {
+func (m *deliveryEndpointRepoMock) ListActiveByRoom(_ context.Context, _ uuid.UUID) ([]domain.Endpoint, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -107,7 +107,7 @@ func TestDeliveryService_ProcessPending_ClaimError(t *testing.T) {
 	wantErr := errors.New("claim failed")
 	svc := NewDeliveryService(
 		&deliveryRepoMock{
-			claimPendingFn: func(ctx context.Context, limit int) ([]domain.Delivery, error) {
+			claimPendingFn: func(_ context.Context, _ int) ([]domain.Delivery, error) {
 				return nil, wantErr
 			},
 		},
@@ -129,12 +129,12 @@ func TestDeliveryService_ProcessPending_MarkFailedOnMaxAttempts(t *testing.T) {
 	failedCalled := false
 	svc := NewDeliveryService(
 		&deliveryRepoMock{
-			claimPendingFn: func(ctx context.Context, limit int) ([]domain.Delivery, error) {
+			claimPendingFn: func(_ context.Context, _ int) ([]domain.Delivery, error) {
 				return []domain.Delivery{
 					{ID: deliveryID, Attempts: 5},
 				}, nil
 			},
-			markFailedFn: func(ctx context.Context, id uuid.UUID, lastErr string) error {
+			markFailedFn: func(_ context.Context, id uuid.UUID, _ string) error {
 				failedCalled = true
 				if id != deliveryID {
 					t.Fatalf("unexpected id: %s", id)
@@ -166,7 +166,7 @@ func TestDeliveryService_ProcessPending_SuccessPath(t *testing.T) {
 
 	svc := NewDeliveryService(
 		&deliveryRepoMock{
-			claimPendingFn: func(ctx context.Context, limit int) ([]domain.Delivery, error) {
+			claimPendingFn: func(_ context.Context, _ int) ([]domain.Delivery, error) {
 				return []domain.Delivery{
 					{
 						ID:               deliveryID,
@@ -176,7 +176,7 @@ func TestDeliveryService_ProcessPending_SuccessPath(t *testing.T) {
 					},
 				}, nil
 			},
-			markSentFn: func(ctx context.Context, id uuid.UUID) error {
+			markSentFn: func(_ context.Context, id uuid.UUID) error {
 				sentCalled = true
 				if id != deliveryID {
 					t.Fatalf("unexpected id: %s", id)
@@ -185,7 +185,7 @@ func TestDeliveryService_ProcessPending_SuccessPath(t *testing.T) {
 			},
 		},
 		&deliveryMsgRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Message, error) {
 				return &domain.Message{
 					ID:             msgID,
 					SourcePlatform: domain.PlatformTelegram,
@@ -195,7 +195,7 @@ func TestDeliveryService_ProcessPending_SuccessPath(t *testing.T) {
 			},
 		},
 		&deliveryEndpointRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Endpoint, error) {
 				return &domain.Endpoint{
 					ID:             endpointID,
 					Platform:       domain.PlatformSlack,
@@ -206,7 +206,7 @@ func TestDeliveryService_ProcessPending_SuccessPath(t *testing.T) {
 		},
 		map[domain.Platform]PlatformClient{
 			domain.PlatformSlack: &platformClientMock{
-				sendFn: func(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
+				sendFn: func(_ context.Context, _ *domain.Endpoint, _ *domain.Message) error {
 					clientCalled = true
 					return nil
 				},
@@ -235,7 +235,7 @@ func TestDeliveryService_ProcessPending_RetryOnSendError(t *testing.T) {
 
 	svc := NewDeliveryService(
 		&deliveryRepoMock{
-			claimPendingFn: func(ctx context.Context, limit int) ([]domain.Delivery, error) {
+			claimPendingFn: func(_ context.Context, _ int) ([]domain.Delivery, error) {
 				return []domain.Delivery{
 					{
 						ID:               deliveryID,
@@ -245,7 +245,7 @@ func TestDeliveryService_ProcessPending_RetryOnSendError(t *testing.T) {
 					},
 				}, nil
 			},
-			markRetryFn: func(ctx context.Context, id uuid.UUID, lastErr string, nextRetryAt time.Time) error {
+			markRetryFn: func(_ context.Context, id uuid.UUID, lastErr string, nextRetryAt time.Time) error {
 				retryCalled = true
 				if id != deliveryID {
 					t.Fatalf("unexpected id: %s", id)
@@ -260,12 +260,12 @@ func TestDeliveryService_ProcessPending_RetryOnSendError(t *testing.T) {
 			},
 		},
 		&deliveryMsgRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Message, error) {
 				return &domain.Message{ID: msgID}, nil
 			},
 		},
 		&deliveryEndpointRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Endpoint, error) {
 				return &domain.Endpoint{
 					ID:             endpointID,
 					Platform:       domain.PlatformSlack,
@@ -275,7 +275,7 @@ func TestDeliveryService_ProcessPending_RetryOnSendError(t *testing.T) {
 		},
 		map[domain.Platform]PlatformClient{
 			domain.PlatformSlack: &platformClientMock{
-				sendFn: func(ctx context.Context, endpoint *domain.Endpoint, msg *domain.Message) error {
+				sendFn: func(_ context.Context, _ *domain.Endpoint, _ *domain.Message) error {
 					return errors.New("temporary send failure")
 				},
 			},
@@ -300,7 +300,7 @@ func TestDeliveryService_ProcessPending_FailOnMissingClient(t *testing.T) {
 
 	svc := NewDeliveryService(
 		&deliveryRepoMock{
-			claimPendingFn: func(ctx context.Context, limit int) ([]domain.Delivery, error) {
+			claimPendingFn: func(_ context.Context, _ int) ([]domain.Delivery, error) {
 				return []domain.Delivery{
 					{
 						ID:               deliveryID,
@@ -309,18 +309,18 @@ func TestDeliveryService_ProcessPending_FailOnMissingClient(t *testing.T) {
 					},
 				}, nil
 			},
-			markFailedFn: func(ctx context.Context, id uuid.UUID, lastErr string) error {
+			markFailedFn: func(_ context.Context, _ uuid.UUID, _ string) error {
 				failedCalled = true
 				return nil
 			},
 		},
 		&deliveryMsgRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Message, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Message, error) {
 				return &domain.Message{ID: msgID}, nil
 			},
 		},
 		&deliveryEndpointRepoMock{
-			getByIDFn: func(ctx context.Context, id uuid.UUID) (*domain.Endpoint, error) {
+			getByIDFn: func(_ context.Context, _ uuid.UUID) (*domain.Endpoint, error) {
 				return &domain.Endpoint{
 					ID:       endpointID,
 					Platform: domain.PlatformSlack,

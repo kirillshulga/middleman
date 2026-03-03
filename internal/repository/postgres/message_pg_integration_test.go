@@ -42,7 +42,9 @@ func TestMessageRepository_Integration_CreateAndGetByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	msg := &domain.Message{
 		ID:                      messageID,
