@@ -31,7 +31,7 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:           getEnv("DATABASE_URL", "postgres://sync_user:sync_pass@localhost:5433/sync_db?sslmode=disable"),
+		DatabaseURL:           getEnv("DATABASE_URL", "postgres://sync_user:sync_pass@localhost:5432/sync_db?sslmode=disable"),
 		TelegramToken:         getEnv("TELEGRAM_TOKEN", ""),
 		TelegramWebhookSecret: getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramWebhookURL:    getEnv("TELEGRAM_WEBHOOK_URL", ""),

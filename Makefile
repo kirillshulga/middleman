@@ -1,5 +1,5 @@
 COMPOSE_FILE := deployments/docker-compose.yml
-TEST_DATABASE_URL ?= postgres://sync_user:sync_pass@localhost:5433/sync_db?sslmode=disable
+TEST_DATABASE_URL ?= postgres://sync_user:sync_pass@localhost:5432/sync_db?sslmode=disable
 
 .PHONY: run test test-integration vet release-check db-up db-down db-reset migrate
 
