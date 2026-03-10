@@ -17,7 +17,7 @@ func TestGetEnv(t *testing.T) {
 
 func TestLoad_UsesEnvironmentForDatabaseURLAndPort(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
-	t.Setenv("HTTP_PORT", "9090")
+	t.Setenv("PORT", "9090")
 	t.Setenv("TELEGRAM_TOKEN", "tg-token")
 	t.Setenv("TELEGRAM_WEBHOOK_SECRET", "tg-secret")
 	t.Setenv("TELEGRAM_WEBHOOK_URL", "https://example.com/telegram-webhook")
