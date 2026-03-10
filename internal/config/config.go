@@ -31,14 +31,14 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		DatabaseURL:           getEnv("DATABASE_URL", "postgres://sync_user:sync_pass@localhost:5432/sync_db?sslmode=disable"),
+		DatabaseURL:           getEnv("DATABASE_URL", ""),
 		TelegramToken:         getEnv("TELEGRAM_TOKEN", ""),
 		TelegramWebhookSecret: getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramWebhookURL:    getEnv("TELEGRAM_WEBHOOK_URL", ""),
 		DiscordToken:          getEnv("DISCORD_TOKEN", ""),
 		SlackToken:            getEnv("SLACK_TOKEN", ""),
 		SlackSigningSecret:    getEnv("SLACK_SIGNING_SECRET", ""),
-		HTTPPort:              getEnv("HTTP_PORT", "8080"),
+		HTTPPort:              getEnv("PORT", "8080"),
 
 		HTTPReadTimeout:  time.Duration(getEnvInt("HTTP_READ_TIMEOUT_SEC", 10)) * time.Second,
 		HTTPWriteTimeout: time.Duration(getEnvInt("HTTP_WRITE_TIMEOUT_SEC", 20)) * time.Second,

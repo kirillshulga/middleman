@@ -1,0 +1,13 @@
+.git
+.github
+.idea
+.env
+bin
+dist
+tmp
+coverage.out
+
+deployments
+
+**/*_test.go
+**/*.md
