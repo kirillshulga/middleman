@@ -77,17 +77,17 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }} .
+            -t us-central1-docker.pkg.dev/project-09f4fb1f-e0e7-4a14-bcd/middleman/app:${{ github.sha }} .
 
       - name: Push Docker image
         run: |
           docker push \
-          us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }}
+          us-central1-docker.pkg.dev/project-09f4fb1f-e0e7-4a14-bcd/middleman/app:${{ github.sha }}
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy middleman \
-            --image us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }} \
+            --image us-central1-docker.pkg.dev/project-09f4fb1f-e0e7-4a14-bcd/middleman/app:${{ github.sha }} \
             --region us-central1 \
             --platform managed \
             --quiet
