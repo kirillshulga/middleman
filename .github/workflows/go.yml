@@ -1,12 +1,11 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
 
 jobs:
+
   build:
     runs-on: ubuntu-latest
 
@@ -28,7 +27,6 @@ jobs:
     env:
       DATABASE_URL: postgres://sync_user:sync_pass@localhost:5432/sync_db?sslmode=disable
 
-
     steps:
       - uses: actions/checkout@v4
 
@@ -38,26 +36,55 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Download dependencies
-        run: go mod download
+      - run: go mod download
+      - run: go vet ./...
+      - run: go test -race -count=1 -timeout=60s ./...
 
-      - name: Vet
-        run: go vet ./...
-
-      - name: Run tests with race detector
-        run: go test -race -count=1 -timeout=60s ./...
-
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@v8
         with:
           version: latest
 
-      - name: Run golangci-lint
-        run: golangci-lint run
+      - run: golangci-lint run
 
-      - name: Run govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
         continue-on-error: true
 
-      - name: Build
-        run: go build -v ./...
+      - run: go build -v ./...
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/686347536589/locations/global/workloadIdentityPools/github-pool/providers/github
+          service_account: github-deployer@project-09f4fb1f-e0e7-4a14-bcd.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }} .
+
+      - name: Push Docker image
+        run: |
+          docker push \
+          us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy middleman \
+            --image us-central1-docker.pkg.dev/PROJECT_ID/middleman/app:${{ github.sha }} \
+            --region us-central1 \
+            --platform managed \
+            --quiet
