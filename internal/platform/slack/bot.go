@@ -99,6 +99,8 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 			sourceExternalMessageID = fmt.Sprintf("%s:%d:%s", event.Event.Channel, event.EventTime, event.Event.Text)
 		}
 
+		log.Println("Slack Channel: ", event.Event.Channel)
+
 		// создаём сообщение в системе
 		_, err = b.msgService.CreateMessageWithDeliveries(
 			r.Context(),
