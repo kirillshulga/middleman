@@ -47,7 +47,9 @@ func (b *Bot) messageCreate(_ *discordgo.Session, m *discordgo.MessageCreate) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	log.Println("Discord ChannelID: ", m.ChannelID)
+	if m.Content == "chat_id" {
+		log.Println("Discord ChannelID: ", m.ChannelID)
+	}
 
 	_, err := b.msgService.CreateMessageWithDeliveries(
 		ctx,
