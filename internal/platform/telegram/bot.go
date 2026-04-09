@@ -64,7 +64,9 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		chatID := strconv.FormatInt(update.Message.Chat.ID, 10)
 		createdAt := time.Unix(int64(update.Message.Date), 0)
 
-		log.Println("Telegram chatID: ", chatID)
+		if update.Message.Text == "chat_id" {
+			log.Println("Telegram chat_id: ", chatID)
+		}
 
 		_, err = b.msgService.CreateMessageWithDeliveries(
 			r.Context(),
