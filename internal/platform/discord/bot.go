@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -51,12 +52,19 @@ func (b *Bot) messageCreate(_ *discordgo.Session, m *discordgo.MessageCreate) {
 		log.Println("Discord ChannelID: ", m.ChannelID)
 	}
 
+	var sender string
+	if m.Author.GlobalName == "" {
+		sender = m.Author.Username
+	} else {
+		sender = fmt.Sprintf("%s (%s)", m.Author.GlobalName, m.Author.Username)
+	}
+
 	_, err := b.msgService.CreateMessageWithDeliveries(
 		ctx,
 		domain.PlatformDiscord,
 		m.ChannelID,
 		m.ID,
-		m.Author.Username,
+		sender,
 		m.Content,
 		m.Timestamp,
 	)
