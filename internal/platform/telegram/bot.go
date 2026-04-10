@@ -55,9 +55,11 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 			return
 		}
 
-		sender := update.Message.From.UserName
-		if sender == "" {
-			sender = update.Message.From.FirstName
+		var sender string
+		if update.Message.From.FirstName == "" {
+			sender = update.Message.From.UserName
+		} else {
+			sender = fmt.Sprintf("%s %s (%s)", update.Message.From.FirstName, update.Message.From.LastName, update.Message.From.UserName)
 		}
 
 		externalID := strconv.Itoa(update.Message.MessageID)

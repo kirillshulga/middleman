@@ -93,13 +93,21 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		createdAt := time.Unix(event.EventTime, 0)
 		sourceExternalMessageID := event.Event.ClientMsgId
 		if sourceExternalMessageID == "" {
-			sourceExternalMessageID = event.EventID
-		}
-		if sourceExternalMessageID == "" {
 			sourceExternalMessageID = fmt.Sprintf("%s:%d:%s", event.Event.Channel, event.EventTime, event.Event.Text)
 		}
 
-		log.Println("Slack Channel: ", event.Event.Channel)
+		if event.Event.Text == "chat_id" {
+			log.Println("Slack Channel: ", event.Event.Channel)
+		}
+
+		var username string
+		// Get User Info
+		user, err := b.api.GetUserInfo(event.Event.User)
+		username = user.RealName
+		if err != nil {
+			log.Println("slack Get User Info error:", err)
+			username = event.Event.User
+		}
 
 		// создаём сообщение в системе
 		_, err = b.msgService.CreateMessageWithDeliveries(
@@ -107,7 +115,7 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 			domain.PlatformSlack,
 			event.Event.Channel,
 			sourceExternalMessageID,
-			event.Event.User,
+			username,
 			event.Event.Text,
 			createdAt,
 		)
