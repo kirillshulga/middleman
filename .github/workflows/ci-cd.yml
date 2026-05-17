@@ -1,0 +1,109 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+env:
+  IMAGE: us-central1-docker.pkg.dev/project-09f4fb1f-e0e7-4a14-bcd/middleman/app:${{ github.sha }}
+
+jobs:
+  preparation:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: sync_user
+          POSTGRES_PASSWORD: sync_pass
+          POSTGRES_DB: sync_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U sync_user -d sync_db"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      TEST_DATABASE_URL: postgres://sync_user:sync_pass@localhost:5432/sync_db?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -race -count=1 -timeout=60s ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.4
+
+  build:
+    needs: preparation
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.IMAGE }} .
+
+      - name: Authenticate to GCP
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/686347536589/locations/global/workloadIdentityPools/github-pool/providers/actions-github
+          service_account: github-deployer@project-09f4fb1f-e0e7-4a14-bcd.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Push Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker push ${{ env.IMAGE }}
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/686347536589/locations/global/workloadIdentityPools/github-pool/providers/actions-github
+          service_account: github-deployer@project-09f4fb1f-e0e7-4a14-bcd.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy middleman \
+            --image ${{ env.IMAGE }} \
+            --region us-central1 \
+            --platform managed \
+            --quiet
