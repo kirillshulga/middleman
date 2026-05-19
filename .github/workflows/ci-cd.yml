@@ -56,6 +56,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    needs: preparation
     runs-on: ubuntu-latest
 
     steps:
